@@ -1,0 +1,66 @@
+{
+  "name": "thoth-alpha",
+  "displayName": "Thoth Alpha",
+  "description": "AI-powered computational search engine",
+  "publisher": "nomyx-inc",
+  "version": "0.0.2",
+  "icon": "icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sschepis/thoth-alpha-vs.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Machine Learning"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "thothAlpha.openSearch",
+        "title": "Thoth Alpha: Open Search"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "thothAlpha.editor",
+        "displayName": "Thoth Alpha Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.thoth"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "configuration": {
+      "title": "Thoth Alpha",
+      "properties": {
+        "thothAlpha.enableCaching": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable caching of previous LLM responses to disk for faster recall."
+        },
+        "thothAlpha.maxWorkspaceFilesScanned": {
+          "type": "number",
+          "default": 5,
+          "description": "Maximum number of data files (csv, json, log) included when searching workspace data."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.3.3"
+  }
+}

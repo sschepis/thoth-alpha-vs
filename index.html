@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-resource: https:; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;">
+    <title>ThothAlpha Ultra | Silent High-Speed v7.3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        :root { 
+            --primary: var(--vscode-button-background, #f97316); 
+            --primary-hover: var(--vscode-button-hoverBackground, #ea580c); 
+            --bg-main: var(--vscode-editor-background, #f1f5f9);
+            --text-main: var(--vscode-editor-foreground, #1e293b);
+            --bg-aside: var(--vscode-sideBar-background, white);
+            --border-main: var(--vscode-panel-border, #e2e8f0);
+            --pod-bg: var(--vscode-editorWidget-background, white);
+            --input-bg: var(--vscode-input-background, white);
+            --input-fg: var(--vscode-input-foreground, #1e293b);
+            --text-muted: var(--vscode-descriptionForeground, #94a3b8);
+        }
+        * { box-sizing: border-box; }
+        body { font-family: var(--vscode-font-family, 'Inter', sans-serif); background-color: var(--bg-main); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        aside { flex-shrink: 0; width: 300px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; background: var(--bg-aside); z-index: 60; }
+        main { flex-grow: 1; overflow-y: auto; padding: 2rem; min-width: 0; display: flex; flex-direction: column; position: relative; scroll-behavior: smooth; }
+        
+        #searchWrapper { width: 100%; max-width: 800px; margin: 0 auto; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; }
+        .results-view #searchWrapper { position: fixed; bottom: 2rem; left: 50%; transform: translateX(calc(-50% + 150px)); max-width: 700px; }
+        
+        .pod { background: var(--pod-bg); border-radius: 0.75rem; border: 1px solid var(--border-main); padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 1rem; width: 100%; color: var(--text-main); }
+        .grid-primary { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; width: 100%; }
+        
+        .sim-container { width: 100%; background: black; border-radius: 1rem; aspect-ratio: 16 / 9; position: relative; overflow: hidden; min-height: 350px; }
+        canvas#simCanvas { width: 100%; height: 100%; display: block; }
+        
+        .agent-thought { border-left: 3px solid var(--primary); padding: 0.6rem 0.8rem; background: var(--pod-bg); border-radius: 0.5rem; font-size: 0.7rem; margin-bottom: 0.4rem; opacity: 0.8; }
+        .related-pill { padding: 0.4rem 0.8rem; background: var(--pod-bg); border: 1px solid var(--border-main); border-radius: 9999px; font-size: 0.7rem; cursor: pointer; transition: all 0.2s; color: var(--text-main); }
+        .related-pill:hover { border-color: var(--primary); }
+        .katex-display { overflow-x: auto; padding: 0.5rem 0; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        /* Overrides for hardcoded tailwind bg and text colors */
+        .bg-white, .bg-white\/90 { background-color: var(--pod-bg) !important; color: var(--text-main) !important; }
+        .text-slate-800, .text-slate-700 { color: var(--text-main) !important; }
+        .text-slate-400 { color: var(--text-muted) !important; }
+        .border-slate-100, .border-slate-200, .border-slate-50 { border-color: var(--border-main) !important; }
+        .bg-orange-500 { background-color: var(--primary) !important; color: var(--vscode-button-foreground, white) !important; }
+        .hover\:bg-orange-600:hover { background-color: var(--primary-hover) !important; }
+    </style>
+
+</head>
+<body class="transition-colors duration-300">
+
+    <aside>
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-orange-500 text-white p-2 rounded-lg shadow-lg"><i class="fas fa-atom"></i></div>
+                <h1 class="font-bold tracking-tight text-slate-800">ThothAlpha</h1>
+            </div>
+            
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
+            <div id="thoughtLog" class="space-y-2"></div>
+            <div class="pt-6 border-t border-slate-50">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">History</h3>
+                <div id="historyList" class="space-y-2"></div>
+            </div>
+        </div>
+    </aside>
+
+    <main id="mainContainer">
+        <div id="searchWrapper">
+            <div class="relative flex flex-col sm:flex-row gap-2">
+                <select id="modelSelect" class="p-3 px-4 rounded-xl border-none shadow-2xl bg-white/90 backdrop-blur-xl ring-1 ring-slate-200 text-sm outline-none text-slate-700 w-full sm:w-auto focus:ring-2 focus:ring-orange-500">
+                    <option value="">Auto (VS Code Default)</option>
+                </select>
+                <div class="relative flex-1">
+                    <input type="text" id="queryInput" placeholder="Analyze, calculate, or simulate..." class="w-full p-4 pr-36 text-base rounded-2xl border-none shadow-2xl bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] backdrop-blur-xl ring-1 ring-slate-200 focus:ring-4 focus:ring-orange-100 outline-none transition-all" onkeydown="if(event.key==='Enter') executeLoop()">
+                    <button id="computeBtn" onclick="executeLoop()" class="absolute right-2 top-1/2 -translate-y-1/2 bg-orange-500 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-600 shadow-md transition-all">Compute</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-3 ml-2">
+                <label class="flex items-center space-x-2 text-xs text-[var(--vscode-descriptionForeground)] cursor-pointer hover:text-orange-500 transition-colors" title="Include highlighted editor code in context">
+                    <input type="checkbox" id="includeContext" class="rounded text-orange-500 focus:ring-orange-500 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)]" checked>
+                    <i class="fas fa-file-code"></i>
+                    <span>Include Editor Code</span>
+                </label>
+                <label class="flex items-center space-x-2 text-xs text-[var(--vscode-descriptionForeground)] cursor-pointer hover:text-orange-500 transition-colors" title="Include workspace data files (csv, json, log)">
+                    <input type="checkbox" id="includeWorkspace" class="rounded text-orange-500 focus:ring-orange-500 bg-[var(--vscode-input-background)] border-[var(--vscode-input-border)]">
+                    <i class="fas fa-database"></i>
+                    <span>Search Workspace Data</span>
+                </label>
+            </div>
+            <div id="loader" class="hidden mt-4"><div class="w-full h-1 bg-orange-100 rounded-full overflow-hidden relative"><div class="h-full bg-orange-500 absolute left-0 top-0 transition-all duration-500" id="progressBar" style="width: 5%"></div></div></div>
+        </div>
+
+        <div id="homeState" class="animate-in fade-in mt-12 max-w-4xl mx-auto w-full">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="space-y-3">
+                    <h4 class="text-[10px] font-bold text-orange-500 uppercase tracking-widest px-2">Physics</h4>
+                    <button onclick="fillAndRun('wave interference simulation')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-orange-500 transition-all shadow-sm">Wave Interference</button>
+                    <button onclick="fillAndRun('three body problem simulation')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-orange-500 transition-all shadow-sm">Three Body Problem</button>
+                    <button onclick="fillAndRun('projectile motion with air resistance')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-orange-500 transition-all shadow-sm">Projectile Motion</button>
+                    <button onclick="fillAndRun('double pendulum chaos simulation')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-orange-500 transition-all shadow-sm">Double Pendulum</button>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="text-[10px] font-bold text-blue-500 uppercase tracking-widest px-2">Mathematics</h4>
+                    <button onclick="fillAndRun('integrate sin(x) from 0 to pi')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-blue-500 transition-all shadow-sm">Definite Integral</button>
+                    <button onclick="fillAndRun('solve differential equation dy/dx = y*x')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-blue-500 transition-all shadow-sm">ODE Solver</button>
+                    <button onclick="fillAndRun('eigenvalues of matrix [[1, 2], [3, 4]]')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-blue-500 transition-all shadow-sm">Matrix Eigenvalues</button>
+                    <button onclick="fillAndRun('plot polar curve r = sin(3*theta)')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-blue-500 transition-all shadow-sm">Polar Plotting</button>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest px-2">Data & World</h4>
+                    <button onclick="fillAndRun('compare GDP of top 5 countries')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-emerald-500 transition-all shadow-sm">GDP Analytics</button>
+                    <button onclick="fillAndRun('historical population of Tokyo vs New York')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-emerald-500 transition-all shadow-sm">City Demographics</button>
+                    <button onclick="fillAndRun('plot the fibonacci sequence up to 20')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-emerald-500 transition-all shadow-sm">Fibonacci Sequence</button>
+                    <button onclick="fillAndRun('properties of the chemical element Gold')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-emerald-500 transition-all shadow-sm">Chemical Elements</button>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="text-[10px] font-bold text-purple-500 uppercase tracking-widest px-2">Comp Sci</h4>
+                    <button onclick="fillAndRun('sorting algorithm simulation')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-purple-500 transition-all shadow-sm">Sorting Visualizer</button>
+                    <button onclick="fillAndRun('simulate conways game of life')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-purple-500 transition-all shadow-sm">Game of Life</button>
+                    <button onclick="fillAndRun('A* pathfinding algorithm explanation')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-purple-500 transition-all shadow-sm">A* Pathfinding</button>
+                    <button onclick="fillAndRun('binary search tree operations')" class="w-full text-left p-4 bg-white rounded-xl border border-slate-100 text-xs font-semibold hover:border-purple-500 transition-all shadow-sm">Binary Search Tree</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultsContainer" class="hidden flex-col items-center mt-4 pb-48 w-full max-w-4xl mx-auto">
+            <div id="exportControls" class="w-full flex justify-end mb-4 px-4">
+                <button onclick="exportToPDF()" class="bg-white/80 backdrop-blur-sm hover:bg-white text-slate-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                    <i class="fas fa-file-pdf text-orange-500"></i> EXPORT PDF
+                </button>
+            </div>
+            <div class="grid-primary">
+                <div id="interpPod" class="pod"><span class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Interpretation</span><div id="interpContent" class="text-base"></div></div>
+                <div id="resultPod" class="pod bg-orange-500 text-white border-none shadow-lg"><span class="text-[10px] font-bold text-orange-100 uppercase block mb-2">Synthesis</span><div id="resultContent" class="text-xl font-bold"></div></div>
+            </div>
+            <div id="terminalPod" class="pod hidden bg-slate-900 text-green-400 font-mono text-xs overflow-x-auto relative"><div class="text-[10px] font-bold text-slate-500 uppercase mb-2 font-sans flex justify-between items-center"><span>Execution Environment</span><button id="runCodeBtn" class="hidden bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-500 font-bold tracking-wide transition-all cursor-pointer">Run Code</button></div><pre id="terminalContent" class="whitespace-pre-wrap"></pre></div>
+            <div id="labPod" class="pod hidden"><div class="sim-container"><canvas id="simCanvas"></canvas></div></div>
+            <div id="visualPod" class="pod hidden"><div class="h-[300px]"><canvas id="resultChart"></canvas></div></div>
+            <div id="tablePod" class="pod hidden"><div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead id="tableHeader" class="text-slate-400 font-bold uppercase text-[10px]"></thead><tbody id="tableBody" class="divide-y divide-slate-100"></tbody></table></div></div>
+            <div id="insightPod" class="pod hidden"><div id="insightContent" class="prose prose-slate max-w-none prose-orange text-sm"></div></div>
+            <div id="predictivePod" class="hidden w-full px-4"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-3">Next investigations</h4><div id="relatedList" class="flex flex-wrap gap-2"></div></div>
+        </div>
+    </main>
+
+    <script>
+        const apiKey = ""; 
+        let chartInstance = null;
+        let queryHistory = [];
+        window.currentSimLoop = null;
+
+        const alphaSchema = {
+            type: "OBJECT",
+            properties: {
+                interpretation: { type: "STRING" },
+                result_summary: { type: "STRING" },
+                explanation_md: { type: "STRING" },
+                mathjs_cmd: { type: "STRING" },
+                is_graphable: { type: "BOOLEAN" },
+                graph_type: { type: "STRING" },
+                graph_expression: { type: "STRING" },
+                graph_data: { 
+                    type: "ARRAY", 
+                    items: { 
+                        type: "OBJECT", 
+                        properties: { 
+                            label: { type: "STRING" }, 
+                            x: { type: "NUMBER" }, 
+                            y: { type: "NUMBER" } 
+                        } 
+                    } 
+                },
+                table_data: { 
+                    type: "OBJECT", 
+                    properties: { 
+                        headers: { type: "ARRAY", items: { type: "STRING" } }, 
+                        rows: { type: "ARRAY", items: { type: "ARRAY", items: { type: "STRING" } } } 
+                    } 
+                },
+                simulation_js: { type: "STRING" },
+                related_queries: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["interpretation", "result_summary", "explanation_md", "related_queries"]
+        };
+
+        const observer = new MutationObserver(() => {
+            renderMathInElement(document.getElementById('resultsContainer'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}],
+                throwOnError: false
+            });
+        });
+        observer.observe(document.getElementById('resultsContainer'), { childList: true, subtree: true });
+
+        function addThought(text, type = 'info') {
+            const log = document.getElementById('thoughtLog');
+            const icons = { info: 'fa-info-circle', work: 'fa-sync fa-spin', success: 'fa-check-circle', error: 'fa-exclamation-triangle' };
+            const colors = { info: 'text-slate-400', work: 'text-orange-500', success: 'text-green-500', error: 'text-red-500' };
+            const thought = document.createElement('div');
+            thought.className = `agent-thought border-l-4 ${colors[type]}`;
+            thought.innerHTML = `<i class="fas ${icons[type]} mr-2"></i> ${text}`;
+            log.prepend(thought);
+            if (log.children.length > 20) log.lastChild.remove();
+        }
+
+        function toggleDarkMode() {}
+
+        async function callAgent(query, attempt = 0) {
+            const systemPrompt = `You are ThothAlpha Ultra. Respond ONLY with valid JSON matching the schema.
+            - result_summary: Concise text/math (MAX 30 words).
+            - explanation_md: Detailed Markdown. Use $ for math.
+            - simulation_js: IIFE function for 'simCanvas'. BLACK background. Use window.currentSimLoop.
+            - GROUNDING: Use internal scientific knowledge. Do not use external tools.`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: query }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        tools: [], 
+                        generationConfig: { 
+                            responseMimeType: "application/json", 
+                            responseSchema: alphaSchema
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API Error ${response.status}: ${errorText}`);
+                }
+
+                const res = await response.json();
+                const contentText = res.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!contentText) throw new Error("API returned an empty payload.");
+                
+                return JSON.parse(contentText);
+            } catch (e) {
+                // Implementing exponential backoff allowing 401s to retry as well 
+                // in case the runtime takes a moment to inject the environment key.
+                if (attempt < 5) {
+                    const delays = [1000, 2000, 4000, 8000, 16000];
+                    await new Promise(r => setTimeout(r, delays[attempt]));
+                    return callAgent(query, attempt + 1);
+                }
+                
+                addThought("Connection failed. Please ensure your environment is active or provide a valid API key if running locally.", 'error');
+                return null;
+            }
+        }
+
+        async function executeLoop() {
+            let query = document.getElementById('queryInput').value.trim();
+            if (!query) return;
+
+            const computeBtn = document.getElementById('computeBtn');
+            computeBtn.innerText = 'Cancel';
+            computeBtn.onclick = cancelSearch;
+            computeBtn.classList.replace('bg-orange-500', 'bg-slate-500');
+            computeBtn.classList.replace('hover:bg-orange-600', 'hover:bg-slate-600');
+
+            const includeContext = document.getElementById('includeContext').checked;
+            const includeWorkspace = document.getElementById('includeWorkspace').checked;
+            const modelSelect = document.getElementById('modelSelect');
+            const modelId = modelSelect ? modelSelect.value : undefined;
+
+            if (includeContext) query = '__CONTEXT_INJECTED__' + query;
+            if (includeWorkspace) query = '__WORKSPACE_INJECTED__' + query;
+
+            if ((includeContext || includeWorkspace) && window.vscode) {
+                // Request context from extension before proceeding
+                window.vscode.postMessage({ command: 'request_context', query: query, modelId: modelId });
+                return;
+            }
+
+            await performSearch(query, modelId);
+        }
+
+        async function performSearch(query, modelId) {
+            if (window.currentSimLoop) cancelAnimationFrame(window.currentSimLoop);
+
+            document.body.classList.add('results-view');
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('progressBar').style.width = '30%';
+            
+            ['labPod', 'visualPod', 'tablePod', 'insightPod', 'predictivePod', 'terminalPod'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('terminalContent').innerText = '';
+            
+            addThought(`Synthesizing...`, 'work');
+            
+            let data = null;
+            try {
+                data = await callAgent(query, modelId);
+            } catch (e) {
+                if (e.message !== 'CANCELLED') {
+                    addThought("Error: " + e.message, 'error');
+                }
+            } finally {
+                resetComputeButton();
+            }
+
+            if (data) {
+                document.getElementById('progressBar').style.width = '100%';
+                addThought("Synthesis locked.", 'success');
+                document.getElementById('resultsContainer').style.display = 'flex';
+                renderResults(query, data);
+                document.getElementById('mainContainer').scrollTop = 0;
+            }
+            
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('progressBar').style.width = '0%';
+            }, 300);
+        }
+
+        window.renderPartialResults = function(data) {
+            document.getElementById('resultsContainer').style.display = 'flex';
+            
+            if (data.interpretation) {
+                document.getElementById('interpContent').innerHTML = data.interpretation.replace(/\\n/g, '<br>');
+            }
+            if (data.result_summary) {
+                document.getElementById('resultContent').innerText = data.result_summary;
+            }
+            if (data.explanation_md && data.explanation_md.length > 5) {
+                document.getElementById('insightPod').classList.remove('hidden');
+                const cleanMarkdown = data.explanation_md.replace(/\\n/g, '\n');
+                document.getElementById('insightContent').innerHTML = marked.parse(cleanMarkdown);
+            }
+            if (data.table_data && data.table_data.headers) {
+                document.getElementById('tablePod').classList.remove('hidden');
+                const head = document.getElementById('tableHeader');
+                const body = document.getElementById('tableBody');
+                head.innerHTML = `<tr>${data.table_data.headers.map(h => `<th class="py-2 text-left font-bold uppercase tracking-widest text-[9px] text-slate-400">${h}</th>`).join('')}</tr>`;
+                if (data.table_data.rows) {
+                    body.innerHTML = data.table_data.rows.map(row => `<tr>${row.map(cell => `<td class="py-3 text-slate-600">${cell}</td>`).join('')}</tr>`).join('');
+                }
+            }
+        };
+
+        function renderResults(query, data) {
+            if (window.vscode) {
+                window.vscode.postMessage({ command: 'save_state', state: { query, data } });
+            }
+            addToHistory(query);
+            document.getElementById('interpContent').innerHTML = (data.interpretation || "").replace(/\\n/g, '<br>');
+            
+            let finalVal = data.result_summary || "";
+            if (data.mathjs_cmd) {
+                try { 
+                    const evalRes = math.evaluate(data.mathjs_cmd);
+                    finalVal = evalRes.toString(); 
+                } catch(e){}
+            }
+            document.getElementById('resultContent').innerText = finalVal;
+
+            if (data.explanation_md && data.explanation_md.length > 5) {
+                document.getElementById('insightPod').classList.remove('hidden');
+                const cleanMarkdown = data.explanation_md.replace(/\\n/g, '\n');
+                document.getElementById('insightContent').innerHTML = marked.parse(cleanMarkdown);
+            }
+
+            if (data.table_data && data.table_data.headers) {
+                document.getElementById('tablePod').classList.remove('hidden');
+                const head = document.getElementById('tableHeader');
+                const body = document.getElementById('tableBody');
+                head.innerHTML = `<tr>${data.table_data.headers.map(h => `<th class="py-2 text-left font-bold uppercase tracking-widest text-[9px] text-slate-400">${h}</th>`).join('')}</tr>`;
+                body.innerHTML = data.table_data.rows.map(row => `<tr>${row.map(cell => `<td class="py-3 text-slate-600">${cell}</td>`).join('')}</tr>`).join('');
+            }
+
+            if (data.is_graphable || data.graph_data) {
+                document.getElementById('visualPod').classList.remove('hidden');
+                renderChart(data);
+            }
+
+            if (data.simulation_js && data.simulation_js.length > 10) {
+                document.getElementById('labPod').classList.remove('hidden');
+                const canvas = document.getElementById('simCanvas');
+                const parent = canvas.parentElement;
+                canvas.width = parent.offsetWidth; 
+                canvas.height = parent.offsetHeight;
+                try { (new Function(data.simulation_js))(); } catch(e){
+                    addThought("Visual exception caught.", 'error');
+                }
+            }
+
+            if (data.related_queries) {
+                document.getElementById('predictivePod').classList.remove('hidden');
+                document.getElementById('relatedList').innerHTML = data.related_queries.map(q => `
+                    <div onclick="fillAndRun('${q.replace(/'/g, "\\'")}')" class="related-pill">${q}</div>
+                `).join('');
+            }
+
+            if (data.executable_code && data.executable_code.language && data.executable_code.code) {
+                document.getElementById('terminalPod').classList.remove('hidden');
+                document.getElementById('terminalContent').innerText = `// Language: ${data.executable_code.language}\n\n${data.executable_code.code}`;
+                
+                const runBtn = document.getElementById('runCodeBtn');
+                runBtn.classList.remove('hidden');
+                runBtn.onclick = function() {
+                    runBtn.classList.add('hidden');
+                    document.getElementById('terminalContent').innerText += '\n\n>>> EXECUTING...\n';
+                    if (window.vscode) {
+                        window.vscode.postMessage({
+                            command: 'execute_code',
+                            language: data.executable_code.language,
+                            code: data.executable_code.code
+                        });
+                    }
+                };
+            }
+        }
+
+        function cancelSearch() {
+            if (window.vscode) {
+                window.vscode.postMessage({ command: 'cancel_search' });
+            }
+            resetComputeButton();
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('progressBar').style.width = '0%';
+            addThought("Computation cancelled.", 'error');
+        }
+
+        function resetComputeButton() {
+            const computeBtn = document.getElementById('computeBtn');
+            if(computeBtn) {
+                computeBtn.innerText = 'Compute';
+                computeBtn.onclick = executeLoop;
+                computeBtn.classList.replace('bg-slate-500', 'bg-orange-500');
+                computeBtn.classList.replace('hover:bg-slate-600', 'hover:bg-orange-600');
+            }
+        }
+        function renderChart(data) {
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            let cData = { labels: [], datasets: [] };
+            if (data.graph_type === 'bar' && data.graph_data) {
+                cData.labels = data.graph_data.map(d => d.label || d.x);
+                cData.datasets = [{ data: data.graph_data.map(d => d.y), backgroundColor: '#f97316', borderRadius: 8 }];
+            } else {
+                const x = []; const y = []; const exp = data.graph_expression || "x";
+                try {
+                    const node = math.parse(exp); const code = node.compile();
+                    for (let i = -5; i <= 5; i += 0.5) { x.push(i.toFixed(1)); y.push(code.evaluate({x:i})); }
+                    cData.labels = x; cData.datasets = [{ data: y, borderColor: '#f97316', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }];
+                } catch(e){}
+            }
+            chartInstance = new Chart(ctx, { type: data.graph_type === 'bar' ? 'bar' : 'line', data: cData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        }
+
+        function addToHistory(query) {
+            if (queryHistory[0] === query) return;
+            queryHistory.unshift(query);
+            if (queryHistory.length > 10) queryHistory.pop();
+            const list = document.getElementById('historyList');
+            list.innerHTML = queryHistory.map(q => `<div onclick="fillAndRun('${q.replace(/'/g, "\\'")}')" class="p-2 bg-white border border-slate-100 rounded-lg text-xs font-medium cursor-pointer hover:bg-orange-50 truncate mb-1"><i class="fas fa-history mr-2 text-slate-300"></i>${q}</div>`).join('');
+        }
+
+        function fillAndRun(text) { document.getElementById('queryInput').value = text; executeLoop(); }
+        window.loadState = function(state) {
+            if (!state || !state.query || !state.data) return;
+
+        async function exportToPDF() {
+            const element = document.getElementById('resultsContainer');
+            const controls = document.getElementById('exportControls');
+            const predictive = document.getElementById('predictivePod');
+            
+            // Hide elements we don't want in the PDF
+            controls.style.display = 'none';
+            const predictiveWasHidden = predictive.classList.contains('hidden');
+            predictive.classList.add('hidden');
+
+            const opt = {
+                margin: [15, 15],
+                filename: `Thoth_Alpha_Results_${Date.now()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    backgroundColor: getComputedStyle(document.body).backgroundColor 
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                addThought("Generating PDF...", "work");
+                await html2pdf().set(opt).from(element).save();
+                addThought("PDF exported successfully.", "success");
+            } catch (e) {
+                console.error("PDF Export failed", e);
+                addThought("PDF Export failed.", "error");
+            } finally {
+                // Restore elements
+                controls.style.display = 'flex';
+                if (!predictiveWasHidden) predictive.classList.remove('hidden');
+            }
+        }
+            document.getElementById('queryInput').value = state.query;
+            document.body.classList.add('results-view');
+            ['labPod', 'visualPod', 'tablePod', 'insightPod', 'predictivePod', 'terminalPod'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('resultsContainer').style.display = 'flex';
+            renderResults(state.query, state.data);
+        };
+    </script>
+</body>
+</html>

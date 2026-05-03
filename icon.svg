@@ -1,0 +1,47 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a"/>
+            <stop offset="100%" stop-color="#020617"/>
+        </linearGradient>
+        <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8"/>
+            <stop offset="100%" stop-color="#2563eb"/>
+        </linearGradient>
+        <linearGradient id="sunGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ea580c"/>
+            <stop offset="50%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#fde047"/>
+        </linearGradient>
+        <filter id="glowSun">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <filter id="glowMoon">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+    </defs>
+    
+    <!-- Background rounded rectangle -->
+    <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+    
+    <!-- Abstract Circuit Board Traces -->
+    <path d="M 0 64 L 64 64 L 96 96 L 96 256" stroke="#1e293b" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M 256 192 L 192 192 L 160 160 L 160 0" stroke="#1e293b" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M 32 256 L 32 192 L 64 160 L 96 160" stroke="#1e293b" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <circle cx="96" cy="96" r="6" fill="#1e293b"/>
+    <circle cx="160" cy="160" r="6" fill="#1e293b"/>
+    <circle cx="64" cy="160" r="6" fill="#1e293b"/>
+
+    <!-- Crescent Moon (Thoth's Crown base) -->
+    <path d="M 56 130 C 56 220, 200 220, 200 130 C 160 176, 96 176, 56 130 Z" fill="url(#moonGrad)" filter="url(#glowMoon)"/>
+    
+    <!-- Glowing Sun (Orb of knowledge) -->
+    <circle cx="128" cy="112" r="46" fill="url(#sunGrad)" filter="url(#glowSun)"/>
+    
+    <!-- Inner geometric core (Alpha / Node) -->
+    <path d="M 128 76 L 156 112 L 128 148 L 100 112 Z" fill="#ffffff" opacity="0.95"/>
+    <circle cx="128" cy="112" r="6" fill="#ea580c"/>
+    <path d="M 128 76 L 128 148 M 100 112 L 156 112" stroke="#ea580c" stroke-width="2" opacity="0.6"/>
+</svg>

@@ -1,0 +1,15 @@
+.vscode/**
+.vscode-test/**
+out/**/*.map
+src/**
+.gitignore
+.npmignore
+.vscodeignore
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+.thothalpha/
+.obotovs/
+icon.svg
