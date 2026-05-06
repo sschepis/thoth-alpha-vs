@@ -326,7 +326,7 @@
     "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
-    "@types/node": "18.x",
+    "@types/node": "^18.19.130",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.3.3"
   },
