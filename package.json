@@ -3,7 +3,7 @@
   "displayName": "Thoth Alpha",
   "description": "AI-powered computational search engine",
   "publisher": "nomyx-inc",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "icon": "icon.png",
   "license": "MIT",
   "repository": {
@@ -188,7 +188,8 @@
         {
           "id": "thothAlpha.launcherView",
           "name": "Thoth Alpha",
-          "type": "webview"
+          "type": "webview",
+          "icon": "media/thoth-icon.svg"
         }
       ]
     },
@@ -205,7 +206,7 @@
       {
         "name": "thoth-alpha_compute",
         "displayName": "Thoth Compute",
-        "description": "Run a computational or scientific query through the Thoth Alpha engine and get structured results including explanations, tables, and code.",
+        "modelDescription": "Run a computational or scientific query through the Thoth Alpha engine and get structured results including explanations, tables, and code.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -222,7 +223,7 @@
       {
         "name": "thoth-alpha_execute-code",
         "displayName": "Thoth Execute Code",
-        "description": "Execute Python, JavaScript, or Bash code locally and return the output.",
+        "modelDescription": "Execute Python, JavaScript, or Bash code locally and return the output.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -249,7 +250,7 @@
       {
         "name": "thoth-alpha_search-workspace",
         "displayName": "Thoth Search Workspace",
-        "description": "Search the workspace for data files (CSV, JSON, MD, TXT, LOG) and return their content.",
+        "modelDescription": "Search the workspace for data files (CSV, JSON, MD, TXT, LOG) and return their content.",
         "inputSchema": {
           "type": "object",
           "properties": {
