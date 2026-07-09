@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import { ThothAgentEngine, ConversationMessage, WebviewSearchSink, WebviewDeepResearchSink, WebviewExecutionSink } from './ThothAgentEngine';
 import { ThothPanel } from './ThothPanel';
 import { HistoryManager } from './HistoryManager';
+import { setWebviewSecurity, isSensitiveFile } from './webviewSecurity';
+import { buildWebviewBridgeScript, buildCallAgentScript } from './webviewBridge';
 
 export class ThothEditorProvider implements vscode.CustomTextEditorProvider {
     public static readonly viewType = 'thothAlpha.editor';
@@ -29,6 +31,9 @@ export class ThothEditorProvider implements vscode.CustomTextEditorProvider {
             enableScripts: true,
             localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri)]
         };
+        (webviewPanel.webview.options as any).enableFindWidget = false;
+        (webviewPanel.webview.options as any).enableCommandUris = false;
+        setWebviewSecurity(webviewPanel.webview);
 
         webviewPanel.webview.html = await this.getHtmlForWebview(webviewPanel.webview);
 
@@ -128,12 +133,15 @@ export class ThothEditorProvider implements vscode.CustomTextEditorProvider {
                             const files = await vscode.workspace.findFiles('**/*.{csv,json,md,txt,log}', '**/node_modules/**', maxFiles);
                             let wsContext = '\n\n[Workspace Data Context:\n';
                             for (const file of files) {
+                                const relPath = vscode.workspace.asRelativePath(file);
+                                if (isSensitiveFile(relPath)) { continue; }
                                 const content = await fs.promises.readFile(file.fsPath, 'utf8');
-                                wsContext += `File: ${vscode.workspace.asRelativePath(file)}\n\`\`\`\n${content.substring(0, 1500)}${content.length > 1500 ? '...' : ''}\n\`\`\`\n\n`;
+                                wsContext += `File: ${relPath}\n\`\`\`\n${content.substring(0, 1500)}${content.length > 1500 ? '...' : ''}\n\`\`\`\n\n`;
                             }
                             wsContext += ']';
                             contextString += wsContext;
                         } catch (e) {}
+
                         message.query = message.query.replace('__WORKSPACE_INJECTED__', '');
                     }
 
@@ -257,143 +265,10 @@ export class ThothEditorProvider implements vscode.CustomTextEditorProvider {
             return `<!DOCTYPE html><html><body>Error loading UI: ${e}</body></html>`;
         }
 
-        const scriptInjection = `
-        <script>
-            const vscode = acquireVsCodeApi();
-            window.vscode = vscode;
-            window.addEventListener('message', event => {
-                const message = event.data;
-                if (message.command === 'load_state') {
-                    if (window.loadState) window.loadState(message.state);
-                }
-                else if (message.command === 'fill_query') {
-                    var input = document.getElementById('queryInput');
-                    if (input) input.value = message.query;
-                }
-                else if (message.command === 'trigger_new_conversation') {
-                    if (window.startNewConversation) window.startNewConversation();
-                }
-                else if (message.command === 'request_save_results') {
-                    if (window.saveResults) window.saveResults();
-                }
-                else if (message.command === 'save_results_done') {
-                    if (window.addThought) window.addThought('Results saved.', 'success');
-                }
-                else if (message.command === 'inject_context_and_search') {
-                    performSearch(message.query, message.modelId);
-                }
-                else if (message.command === 'set_models') {
-                    const select = document.getElementById('modelSelect');
-                    if (select && message.models) {
-                        select.innerHTML = '<option value="">Auto (VS Code Default)</option>';
-                        message.models.forEach(m => {
-                            const opt = document.createElement('option');
-                            opt.value = m.id;
-                            opt.textContent = m.name + ' (' + m.family + ')';
-                            select.appendChild(opt);
-                        });
-                        if (message.lastModelId) {
-                            select.value = message.lastModelId;
-                        }
-                    }
-                }
-                else if (message.command === 'execution_started') {
-                    const pod = document.getElementById('terminalPod');
-                    if (pod) {
-                        pod.classList.remove('hidden');
-                        document.getElementById('terminalContent').innerText = 'Executing ' + message.language + ' code...\\n';
-                    }
-                }
-                else if (message.command === 'execution_result') {
-                    const pod = document.getElementById('terminalPod');
-                    if (pod) {
-                        let text = document.getElementById('terminalContent').innerText;
-                        if (message.error) {
-                            text += '\\n[ERROR]\\n' + message.error;
-                        } else {
-                            if (message.stdout) text += '\\n[STDOUT]\\n' + message.stdout;
-                            if (message.stderr) text += '\\n[STDERR]\\n' + message.stderr;
-                        }
-                        document.getElementById('terminalContent').innerText = text;
-                    }
-                }
-                else if (message.command === 'deep_research_chunk') {
-                    if (window.handleDeepResearchChunk) window.handleDeepResearchChunk(message.text);
-                }
-                else if (message.command === 'deep_research_done') {
-                    if (window.handleDeepResearchDone) window.handleDeepResearchDone(message.text, message.interactionId);
-                }
-                else if (message.command === 'deep_research_status') {
-                    if (window.handleDeepResearchStatus) window.handleDeepResearchStatus(message.status);
-                }
-                else if (message.command === 'regenerate_simulation_done') {
-                    if (window.handleRegenerateSimulation) window.handleRegenerateSimulation(message.text);
-                }
-                else if (message.command === 'regenerate_simulation_error') {
-                    if (window.handleRegenerateSimulationError) window.handleRegenerateSimulationError(message.text);
-                }
-                else if (message.command === 'fix_simulation_done') {
-                    if (window.handleSimulationFix) window.handleSimulationFix(message.text);
-                }
-                else if (message.command === 'fix_simulation_error') {
-                    if (window.handleSimulationFixError) window.handleSimulationFixError(message.text);
-                }
-            });
-            window.addEventListener('load', () => vscode.postMessage({ command: 'webview_ready' }));
-        </script>
-        `;
+        const scriptInjection = `<script>${buildWebviewBridgeScript({ supportPaperId: false, supportLoadState: true })}</script>`;
         html = html.replace('</head>', `${scriptInjection}</head>`);
 
-        const newCallAgent = `
-        async function callAgent(query, modelId) {
-            return new Promise((resolve, reject) => {
-                vscode.postMessage({ command: 'search', query: query, modelId: modelId });
-                let partialTimer = null;
-                let latestChunk = '';
-                function tryPartialRender() {
-                    try {
-                        let clean = latestChunk.replace(/^\\s*\\x60\\x60\\x60(json)?/i, '').replace(/\\x60\\x60\\x60\\s*$/, '').trim();
-                        const endings = ["", "}", "\\"}", "]}", "\\"]}", "}}", "\\"}}", "\\"]}}"];
-                        for(let ending of endings) {
-                            try {
-                                const partial = JSON.parse(clean + ending);
-                                if (window.renderPartialResults) window.renderPartialResults(partial);
-                                break;
-                            } catch(e) {}
-                        }
-                    } catch(e) {}
-                }
-                const handler = function(event) {
-                    const message = event.data;
-                    if (message.command === 'search_chunk') {
-                        latestChunk = message.text;
-                        if (!partialTimer) {
-                            partialTimer = setTimeout(() => { partialTimer = null; tryPartialRender(); }, 300);
-                        }
-                    }
-                    else if (message.command === 'search_done') {
-                        if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
-                        window.removeEventListener('message', handler);
-                        try {
-                            resolve(JSON.parse(message.text));
-                        } catch(e) {
-                            reject(new Error("Failed to parse JSON response from LLM: " + message.text));
-                        }
-                    } else if (message.command === 'error') {
-                        if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
-                        window.removeEventListener('message', handler);
-                        reject(new Error(message.text));
-                    } else if (message.command === 'search_cancelled') {
-                        if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
-                        window.removeEventListener('message', handler);
-                        reject(new Error('CANCELLED'));
-                    }
-                };
-                window.addEventListener('message', handler);
-            });
-        }
-        `;
-
+        const newCallAgent = buildCallAgentScript({ supportPaperId: false });
         html = html.replace(/async function callAgent\([\s\S]*?(?=async function executeLoop)/, newCallAgent);
         return html;
     }

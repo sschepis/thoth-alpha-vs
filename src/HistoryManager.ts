@@ -7,7 +7,6 @@ export interface HistoryEntry {
     isDeepResearch: boolean;
     sessionId: string;
     resultSummary?: string;
-    resultData?: any;
 }
 
 const STORAGE_KEY = 'thothAlpha.searchHistory';
@@ -26,15 +25,14 @@ export class HistoryManager implements vscode.Disposable {
         this._workspaceEntries = this._context.workspaceState.get<HistoryEntry[]>(STORAGE_KEY, []);
     }
 
-    addEntry(query: string, isDeepResearch: boolean, resultSummary?: string, resultData?: any): void {
+    addEntry(query: string, isDeepResearch: boolean, resultSummary?: string): void {
         const entry: HistoryEntry = {
             id: Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
             query,
             timestamp: Date.now(),
             isDeepResearch,
             sessionId: this._sessionId,
-            resultSummary,
-            resultData
+            resultSummary
         };
 
         this._globalEntries.unshift(entry);

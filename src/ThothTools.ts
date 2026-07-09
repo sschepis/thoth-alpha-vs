@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { ThothAgentEngine, SearchProgressSink, ExecutionSink } from './ThothAgentEngine';
+import { isSensitiveFile } from './webviewSecurity';
 
 class CollectorSearchSink implements SearchProgressSink {
     private _result = '';
@@ -36,6 +37,21 @@ class ThothComputeTool implements vscode.LanguageModelTool<ComputeInput> {
 
 class ThothExecuteCodeTool implements vscode.LanguageModelTool<ExecuteCodeInput> {
     async invoke(options: vscode.LanguageModelToolInvocationOptions<ExecuteCodeInput>, _token: vscode.CancellationToken) {
+        const requiresApproval = vscode.workspace.getConfiguration('thothAlpha').get<boolean>('codeExecutionRequiresApproval', true);
+        if (requiresApproval) {
+            const choice = await vscode.window.showWarningMessage(
+                `Thoth Alpha wants to execute ${options.input.language} code. Allow?`,
+                { modal: true },
+                'Allow Once',
+                'Deny'
+            );
+            if (choice !== 'Allow Once') {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart('Code execution denied by user.')
+                ]);
+            }
+        }
+
         const sink = new CollectorExecutionSink();
         await new Promise<void>(resolve => {
             const originalOnResult = sink.onResult.bind(sink);
@@ -64,9 +80,11 @@ class ThothSearchWorkspaceTool implements vscode.LanguageModelTool<SearchWorkspa
         const results: string[] = [];
 
         for (const file of files) {
+            const relPath = vscode.workspace.asRelativePath(file);
+            if (isSensitiveFile(relPath)) { continue; }
             const content = await fs.promises.readFile(file.fsPath, 'utf8');
             const preview = content.substring(0, 2000);
-            results.push(`File: ${vscode.workspace.asRelativePath(file)}\n${preview}${content.length > 2000 ? '\n...(truncated)' : ''}`);
+            results.push(`File: ${relPath}\n${preview}${content.length > 2000 ? '\n...(truncated)' : ''}`);
         }
 
         return new vscode.LanguageModelToolResult([
